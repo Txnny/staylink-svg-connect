@@ -9,10 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RequestRouteImport } from './routes/request'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as PartnerOnboardRouteImport } from './routes/partner.onboard'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminRedirectsRouteImport } from './routes/admin.redirects'
+import { Route as AdminPropertiesRouteImport } from './routes/admin.properties'
+import { Route as AdminPartnersRouteImport } from './routes/admin.partners'
+import { Route as AdminEarningsRouteImport } from './routes/admin.earnings'
 
+const RequestRoute = RequestRouteImport.update({
+  id: '/request',
+  path: '/request',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -28,37 +40,127 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const PartnerOnboardRoute = PartnerOnboardRouteImport.update({
+  id: '/partner/onboard',
+  path: '/partner/onboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRedirectsRoute = AdminRedirectsRouteImport.update({
+  id: '/redirects',
+  path: '/redirects',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPropertiesRoute = AdminPropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPartnersRoute = AdminPartnersRouteImport.update({
+  id: '/partners',
+  path: '/partners',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEarningsRoute = AdminEarningsRouteImport.update({
+  id: '/earnings',
+  path: '/earnings',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/request': typeof RequestRoute
+  '/admin/earnings': typeof AdminEarningsRoute
+  '/admin/partners': typeof AdminPartnersRoute
+  '/admin/properties': typeof AdminPropertiesRoute
+  '/admin/redirects': typeof AdminRedirectsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/partner/onboard': typeof PartnerOnboardRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/request': typeof RequestRoute
+  '/admin/earnings': typeof AdminEarningsRoute
+  '/admin/partners': typeof AdminPartnersRoute
+  '/admin/properties': typeof AdminPropertiesRoute
+  '/admin/redirects': typeof AdminRedirectsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/partner/onboard': typeof PartnerOnboardRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/request': typeof RequestRoute
+  '/admin/earnings': typeof AdminEarningsRoute
+  '/admin/partners': typeof AdminPartnersRoute
+  '/admin/properties': typeof AdminPropertiesRoute
+  '/admin/redirects': typeof AdminRedirectsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/partner/onboard': typeof PartnerOnboardRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/admin/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/request'
+    | '/admin/earnings'
+    | '/admin/partners'
+    | '/admin/properties'
+    | '/admin/redirects'
+    | '/admin/settings'
+    | '/partner/onboard'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin'
-  id: '__root__' | '/' | '/admin' | '/admin/'
+  to:
+    | '/'
+    | '/request'
+    | '/admin/earnings'
+    | '/admin/partners'
+    | '/admin/properties'
+    | '/admin/redirects'
+    | '/admin/settings'
+    | '/partner/onboard'
+    | '/admin'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/request'
+    | '/admin/earnings'
+    | '/admin/partners'
+    | '/admin/properties'
+    | '/admin/redirects'
+    | '/admin/settings'
+    | '/partner/onboard'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  RequestRoute: typeof RequestRoute
+  PartnerOnboardRoute: typeof PartnerOnboardRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/request': {
+      id: '/request'
+      path: '/request'
+      fullPath: '/request'
+      preLoaderRoute: typeof RequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -80,14 +182,66 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/partner/onboard': {
+      id: '/partner/onboard'
+      path: '/partner/onboard'
+      fullPath: '/partner/onboard'
+      preLoaderRoute: typeof PartnerOnboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/redirects': {
+      id: '/admin/redirects'
+      path: '/redirects'
+      fullPath: '/admin/redirects'
+      preLoaderRoute: typeof AdminRedirectsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/properties': {
+      id: '/admin/properties'
+      path: '/properties'
+      fullPath: '/admin/properties'
+      preLoaderRoute: typeof AdminPropertiesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/partners': {
+      id: '/admin/partners'
+      path: '/partners'
+      fullPath: '/admin/partners'
+      preLoaderRoute: typeof AdminPartnersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/earnings': {
+      id: '/admin/earnings'
+      path: '/earnings'
+      fullPath: '/admin/earnings'
+      preLoaderRoute: typeof AdminEarningsRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminEarningsRoute: typeof AdminEarningsRoute
+  AdminPartnersRoute: typeof AdminPartnersRoute
+  AdminPropertiesRoute: typeof AdminPropertiesRoute
+  AdminRedirectsRoute: typeof AdminRedirectsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminEarningsRoute: AdminEarningsRoute,
+  AdminPartnersRoute: AdminPartnersRoute,
+  AdminPropertiesRoute: AdminPropertiesRoute,
+  AdminRedirectsRoute: AdminRedirectsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
@@ -96,7 +250,19 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  RequestRoute: RequestRoute,
+  PartnerOnboardRoute: PartnerOnboardRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
