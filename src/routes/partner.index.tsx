@@ -131,7 +131,7 @@ function PartnerDashboard() {
           icon={Coins}
           label="Earnings this month"
           value={formatXCD(earnings.data?.month ?? 0)}
-          hint="Confirmed only"
+          hint="Paid out"
         />
         <Metric icon={Coins} label="All-time earnings" value={formatXCD(earnings.data?.all ?? 0)} />
       </section>
