@@ -10,14 +10,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const nav = [
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
+const nav: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/properties", label: "Properties", icon: Building2 },
   { to: "/admin/redirects", label: "Redirects", icon: ArrowRightLeft },
   { to: "/admin/partners", label: "Partners", icon: Users },
   { to: "/admin/earnings", label: "Earnings", icon: Receipt },
   { to: "/admin/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 export function AdminShell() {
   const { pathname } = useLocation();
