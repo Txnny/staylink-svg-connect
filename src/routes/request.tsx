@@ -31,7 +31,7 @@ const Schema = z.object({
     .enum(["any", "hotel", "guesthouse", "villa", "hostel", "airbnb"])
     .optional(),
   notes: z.string().max(1000).optional().or(z.literal("")),
-  source: z.enum(["referral", "airport", "online", "word_of_mouth", "other"]),
+  source: z.enum(["partner_referral", "walkin", "online", "redirect"]),
 });
 
 type FormState = z.infer<typeof Schema>;
@@ -210,11 +210,10 @@ function RequestPage() {
 
           <Field label="How did you hear about us?" error={errors.source}>
             <select name="source" defaultValue="online" required className={inputCls}>
-              <option value="referral">Hotel referral</option>
-              <option value="airport">Airport</option>
+              <option value="partner_referral">Hotel referral</option>
+              <option value="walkin">Airport / walk-in</option>
               <option value="online">Online search</option>
-              <option value="word_of_mouth">Word of mouth</option>
-              <option value="other">Other</option>
+              <option value="redirect">Word of mouth / other</option>
             </select>
           </Field>
 

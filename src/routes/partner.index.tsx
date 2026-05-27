@@ -80,10 +80,10 @@ function PartnerDashboard() {
         .eq("partner_id", partner.data!.id);
       const startMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
       const month = (data ?? [])
-        .filter((e) => e.status === "confirmed" && e.created_at >= startMonth)
+        .filter((e) => e.status === "paid" && e.created_at >= startMonth)
         .reduce((s, e) => s + Number(e.amount_xcd), 0);
       const all = (data ?? [])
-        .filter((e) => e.status === "confirmed")
+        .filter((e) => e.status === "paid")
         .reduce((s, e) => s + Number(e.amount_xcd), 0);
       return { month, all };
     },

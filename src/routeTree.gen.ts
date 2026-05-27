@@ -10,10 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RequestRouteImport } from './routes/request'
+import { Route as PartnerRouteImport } from './routes/partner'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PartnerIndexRouteImport } from './routes/partner.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as PartnerOnboardRouteImport } from './routes/partner.onboard'
+import { Route as PartnerLoginRouteImport } from './routes/partner.login'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminRedirectsRouteImport } from './routes/admin.redirects'
 import { Route as AdminPropertiesRouteImport } from './routes/admin.properties'
@@ -23,6 +26,11 @@ import { Route as AdminEarningsRouteImport } from './routes/admin.earnings'
 const RequestRoute = RequestRouteImport.update({
   id: '/request',
   path: '/request',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartnerRoute = PartnerRouteImport.update({
+  id: '/partner',
+  path: '/partner',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -35,15 +43,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PartnerIndexRoute = PartnerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PartnerRoute,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
 const PartnerOnboardRoute = PartnerOnboardRouteImport.update({
-  id: '/partner/onboard',
-  path: '/partner/onboard',
-  getParentRoute: () => rootRouteImport,
+  id: '/onboard',
+  path: '/onboard',
+  getParentRoute: () => PartnerRoute,
+} as any)
+const PartnerLoginRoute = PartnerLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => PartnerRoute,
 } as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
@@ -74,14 +92,17 @@ const AdminEarningsRoute = AdminEarningsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/partner': typeof PartnerRouteWithChildren
   '/request': typeof RequestRoute
   '/admin/earnings': typeof AdminEarningsRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/properties': typeof AdminPropertiesRoute
   '/admin/redirects': typeof AdminRedirectsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/partner/login': typeof PartnerLoginRoute
   '/partner/onboard': typeof PartnerOnboardRoute
   '/admin/': typeof AdminIndexRoute
+  '/partner/': typeof PartnerIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,35 +112,43 @@ export interface FileRoutesByTo {
   '/admin/properties': typeof AdminPropertiesRoute
   '/admin/redirects': typeof AdminRedirectsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/partner/login': typeof PartnerLoginRoute
   '/partner/onboard': typeof PartnerOnboardRoute
   '/admin': typeof AdminIndexRoute
+  '/partner': typeof PartnerIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/partner': typeof PartnerRouteWithChildren
   '/request': typeof RequestRoute
   '/admin/earnings': typeof AdminEarningsRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/properties': typeof AdminPropertiesRoute
   '/admin/redirects': typeof AdminRedirectsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/partner/login': typeof PartnerLoginRoute
   '/partner/onboard': typeof PartnerOnboardRoute
   '/admin/': typeof AdminIndexRoute
+  '/partner/': typeof PartnerIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/admin'
+    | '/partner'
     | '/request'
     | '/admin/earnings'
     | '/admin/partners'
     | '/admin/properties'
     | '/admin/redirects'
     | '/admin/settings'
+    | '/partner/login'
     | '/partner/onboard'
     | '/admin/'
+    | '/partner/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -129,27 +158,32 @@ export interface FileRouteTypes {
     | '/admin/properties'
     | '/admin/redirects'
     | '/admin/settings'
+    | '/partner/login'
     | '/partner/onboard'
     | '/admin'
+    | '/partner'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/partner'
     | '/request'
     | '/admin/earnings'
     | '/admin/partners'
     | '/admin/properties'
     | '/admin/redirects'
     | '/admin/settings'
+    | '/partner/login'
     | '/partner/onboard'
     | '/admin/'
+    | '/partner/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  PartnerRoute: typeof PartnerRouteWithChildren
   RequestRoute: typeof RequestRoute
-  PartnerOnboardRoute: typeof PartnerOnboardRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -159,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/request'
       fullPath: '/request'
       preLoaderRoute: typeof RequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/partner': {
+      id: '/partner'
+      path: '/partner'
+      fullPath: '/partner'
+      preLoaderRoute: typeof PartnerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -175,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/partner/': {
+      id: '/partner/'
+      path: '/'
+      fullPath: '/partner/'
+      preLoaderRoute: typeof PartnerIndexRouteImport
+      parentRoute: typeof PartnerRoute
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -184,10 +232,17 @@ declare module '@tanstack/react-router' {
     }
     '/partner/onboard': {
       id: '/partner/onboard'
-      path: '/partner/onboard'
+      path: '/onboard'
       fullPath: '/partner/onboard'
       preLoaderRoute: typeof PartnerOnboardRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof PartnerRoute
+    }
+    '/partner/login': {
+      id: '/partner/login'
+      path: '/login'
+      fullPath: '/partner/login'
+      preLoaderRoute: typeof PartnerLoginRouteImport
+      parentRoute: typeof PartnerRoute
     }
     '/admin/settings': {
       id: '/admin/settings'
@@ -247,11 +302,26 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface PartnerRouteChildren {
+  PartnerLoginRoute: typeof PartnerLoginRoute
+  PartnerOnboardRoute: typeof PartnerOnboardRoute
+  PartnerIndexRoute: typeof PartnerIndexRoute
+}
+
+const PartnerRouteChildren: PartnerRouteChildren = {
+  PartnerLoginRoute: PartnerLoginRoute,
+  PartnerOnboardRoute: PartnerOnboardRoute,
+  PartnerIndexRoute: PartnerIndexRoute,
+}
+
+const PartnerRouteWithChildren =
+  PartnerRoute._addFileChildren(PartnerRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  PartnerRoute: PartnerRouteWithChildren,
   RequestRoute: RequestRoute,
-  PartnerOnboardRoute: PartnerOnboardRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
