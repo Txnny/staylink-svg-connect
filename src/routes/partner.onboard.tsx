@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Waves, CheckCircle2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PARISHES, sendEmail, templates } from "@/lib/emails";
 
 export const Route = createFileRoute("/partner/onboard")({
   head: () => ({
