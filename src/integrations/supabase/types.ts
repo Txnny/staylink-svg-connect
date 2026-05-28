@@ -155,7 +155,9 @@ export type Database = {
           fee_rate: number
           id: string
           joined_at: string
+          parish: string | null
           phone: string | null
+          room_count: number | null
           status: Database["public"]["Enums"]["partner_status"]
           user_id: string | null
         }
@@ -168,7 +170,9 @@ export type Database = {
           fee_rate?: number
           id?: string
           joined_at?: string
+          parish?: string | null
           phone?: string | null
+          room_count?: number | null
           status?: Database["public"]["Enums"]["partner_status"]
           user_id?: string | null
         }
@@ -181,7 +185,9 @@ export type Database = {
           fee_rate?: number
           id?: string
           joined_at?: string
+          parish?: string | null
           phone?: string | null
+          room_count?: number | null
           status?: Database["public"]["Enums"]["partner_status"]
           user_id?: string | null
         }
@@ -202,6 +208,7 @@ export type Database = {
           name: string
           parish: string | null
           partner_id: string | null
+          rating: number | null
           status: Database["public"]["Enums"]["property_status"]
           type: Database["public"]["Enums"]["property_type"]
           website: string | null
@@ -220,6 +227,7 @@ export type Database = {
           name: string
           parish?: string | null
           partner_id?: string | null
+          rating?: number | null
           status?: Database["public"]["Enums"]["property_status"]
           type: Database["public"]["Enums"]["property_type"]
           website?: string | null
@@ -238,6 +246,7 @@ export type Database = {
           name?: string
           parish?: string | null
           partner_id?: string | null
+          rating?: number | null
           status?: Database["public"]["Enums"]["property_status"]
           type?: Database["public"]["Enums"]["property_type"]
           website?: string | null
