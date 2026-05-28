@@ -167,8 +167,7 @@ function StatusBadge({ status }: { status: Partner["status"] }) {
   const tone: Record<Partner["status"], string> = {
     onboarding: "bg-amber/20 text-amber-foreground border-amber/40",
     active: "bg-mint/30 text-primary border-mint/50",
-    paused: "bg-muted text-muted-foreground border-border",
-    removed: "bg-destructive/15 text-destructive border-destructive/30",
+    inactive: "bg-muted text-muted-foreground border-border",
   };
   return <Badge variant="outline" className={`capitalize ${tone[status]}`}>{status}</Badge>;
 }
