@@ -74,7 +74,7 @@ function PartnersPage() {
       </header>
 
       <div className="flex gap-2 flex-wrap">
-        {(["all", "onboarding", "active", "paused", "removed"] as const).map((s) => (
+        {(["all", "onboarding", "active", "inactive"] as const).map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
