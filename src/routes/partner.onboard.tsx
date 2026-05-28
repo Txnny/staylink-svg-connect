@@ -169,7 +169,11 @@ function PartnerOnboard() {
               </select>
             </Field>
             <Field label="Parish / location" error={errors.parish}>
-              <input name="parish" required placeholder="e.g. Kingstown" className={inputCls} />
+              <select name="parish" defaultValue="Kingstown" required className={inputCls}>
+                {PARISHES.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </Field>
           </div>
 
