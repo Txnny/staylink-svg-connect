@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       .select(
         `id, name, room_type, price_per_night_xcd, max_guests, available,
          available_from, available_to,
-         property:properties(id, name, type, location, parish, contact_email, website)`,
+         property:properties(id, name, type, location, parish, contact_email, website, rating)`,
       )
       .eq("available", true)
       .gte("max_guests", body.guest_count)

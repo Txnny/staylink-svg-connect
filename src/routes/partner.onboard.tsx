@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Waves, CheckCircle2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PARISHES, sendEmail, templates } from "@/lib/emails";
 
 export const Route = createFileRoute("/partner/onboard")({
   head: () => ({
@@ -65,6 +66,8 @@ function PartnerOnboard() {
       contact_name: parsed.data.contact_name,
       email: parsed.data.email,
       phone: parsed.data.phone,
+      parish: parsed.data.parish,
+      room_count: parsed.data.room_count,
       fee_agreement_type: parsed.data.fee_type,
       fee_rate: parsed.data.fee_rate,
       status: "onboarding",
@@ -75,6 +78,31 @@ function PartnerOnboard() {
       toast.error(error.message || "Could not submit. Try again.");
       return;
     }
+
+    // Fire-and-forget transactional emails.
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    sendEmail({
+      to: parsed.data.email,
+      subject: "Welcome to StayLink SVG — your application is received",
+      html: templates.partnerOnboardingWelcome({
+        businessName: parsed.data.business_name,
+        contactName: parsed.data.contact_name,
+      }),
+    });
+    sendEmail({
+      to: "admin",
+      subject: `New partner application — ${parsed.data.business_name}`,
+      html: templates.adminNewPartnerNotice({
+        businessName: parsed.data.business_name,
+        contactName: parsed.data.contact_name,
+        propertyType: parsed.data.property_type,
+        parish: parsed.data.parish,
+        email: parsed.data.email,
+        phone: parsed.data.phone,
+        adminUrl: `${origin}/admin/partners`,
+      }),
+    });
+
     setSubmitted(true);
   }
 
@@ -141,7 +169,11 @@ function PartnerOnboard() {
               </select>
             </Field>
             <Field label="Parish / location" error={errors.parish}>
-              <input name="parish" required placeholder="e.g. Kingstown" className={inputCls} />
+              <select name="parish" defaultValue="Kingstown" required className={inputCls}>
+                {PARISHES.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </Field>
           </div>
 

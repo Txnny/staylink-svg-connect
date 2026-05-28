@@ -6,8 +6,9 @@ import { formatXCD, formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Sparkles, Loader2, Check } from "lucide-react";
+import { Sparkles, Loader2, Check, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
+import { sendEmail, templates } from "@/lib/emails";
 
 export const Route = createFileRoute("/admin/redirects")({
   component: RedirectsPage,
@@ -20,9 +21,12 @@ type RedirectRow = {
   status: string;
   created_at: string;
   admin_notes: string | null;
+  matched_property_id: string | null;
+  matched_room_id: string | null;
   traveller: {
     id?: string;
     full_name?: string;
+    email?: string;
     nights_needed?: number;
     guest_count?: number;
     budget_max_xcd?: number | null;
@@ -30,7 +34,7 @@ type RedirectRow = {
     departure_date?: string | null;
     accommodation_type_preference?: string | null;
   } | null;
-  matched: { id?: string; name?: string; type?: string } | null;
+  matched: { id?: string; name?: string; type?: string; address?: string | null; contact_email?: string | null; contact_phone?: string | null; website?: string | null; partner_id?: string | null } | null;
   from: { name?: string } | null;
 };
 
@@ -39,6 +43,7 @@ function RedirectsPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [matching, setMatching] = useState<RedirectRow | null>(null);
+  const [confirming, setConfirming] = useState<RedirectRow | null>(null);
 
   const list = useQuery({
     queryKey: ["admin", "redirects", status, fromDate, toDate],
@@ -46,9 +51,9 @@ function RedirectsPage() {
       let q = supabase
         .from("redirects")
         .select(
-          `id, status, created_at, admin_notes,
-           traveller:travellers(id, full_name, nights_needed, guest_count, budget_max_xcd, arrival_date, departure_date, accommodation_type_preference),
-           matched:properties!redirects_matched_property_id_fkey(id, name, type),
+          `id, status, created_at, admin_notes, matched_property_id, matched_room_id,
+           traveller:travellers(id, full_name, email, nights_needed, guest_count, budget_max_xcd, arrival_date, departure_date, accommodation_type_preference),
+           matched:properties!redirects_matched_property_id_fkey(id, name, type, address, contact_email, contact_phone, website, partner_id),
            from:properties!redirects_from_property_id_fkey(name)`,
         )
         .order("created_at", { ascending: false });
@@ -164,6 +169,11 @@ function RedirectsPage() {
                           <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Match
                         </Button>
                       )}
+                      {r.status === "matched" && (
+                        <Button size="sm" variant="default" onClick={() => setConfirming(r)}>
+                          <BadgeCheck className="h-3.5 w-3.5 mr-1.5" /> Confirm
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -177,6 +187,12 @@ function RedirectsPage() {
         <MatchDialog
           redirect={matching}
           onClose={() => setMatching(null)}
+        />
+      )}
+      {confirming && (
+        <ConfirmBookingDialog
+          redirect={confirming}
+          onClose={() => setConfirming(null)}
         />
       )}
     </div>
@@ -374,5 +390,188 @@ function StatusBadge({ status }: { status: string }) {
     <Badge variant="outline" className={`capitalize ${tone[status] ?? ""}`}>
       {status}
     </Badge>
+  );
+}
+
+function ConfirmBookingDialog({ redirect, onClose }: { redirect: RedirectRow; onClose: () => void }) {
+  const qc = useQueryClient();
+  const t = redirect.traveller;
+  const m = redirect.matched;
+  const [busy, setBusy] = useState(false);
+
+  const details = useQuery({
+    queryKey: ["confirm-details", redirect.id],
+    queryFn: async () => {
+      const [{ data: room }, { data: partner }] = await Promise.all([
+        supabase
+          .from("rooms")
+          .select("id, name, price_per_night_xcd, property_id")
+          .eq("id", redirect.matched_room_id!)
+          .maybeSingle(),
+        m?.partner_id
+          ? supabase
+              .from("partners")
+              .select("id, email, business_name, fee_agreement_type, fee_rate")
+              .eq("id", m.partner_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      return { room, partner };
+    },
+  });
+
+  const checkIn = t?.arrival_date ?? new Date().toISOString().slice(0, 10);
+  const checkOut =
+    t?.departure_date ?? new Date(Date.now() + (t?.nights_needed ?? 1) * 86400000).toISOString().slice(0, 10);
+  const nights = Math.max(
+    1,
+    Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000),
+  );
+  const price = Number(details.data?.room?.price_per_night_xcd ?? 0);
+  const total = price * nights;
+  const partner = details.data?.partner;
+  const fee =
+    partner?.fee_agreement_type === "flat"
+      ? Number(partner.fee_rate)
+      : total * (Number(partner?.fee_rate ?? 0) / 100);
+
+  async function confirm() {
+    if (!details.data?.room || !partner) {
+      toast.error("Missing room or partner data");
+      return;
+    }
+    setBusy(true);
+    try {
+      const nowIso = new Date().toISOString();
+
+      const { error: rErr } = await supabase
+        .from("redirects")
+        .update({ status: "confirmed", confirmed_at: nowIso })
+        .eq("id", redirect.id);
+      if (rErr) throw rErr;
+
+      const { data: booking, error: bErr } = await supabase
+        .from("bookings")
+        .insert({
+          redirect_id: redirect.id,
+          traveller_id: t?.id ?? null,
+          property_id: redirect.matched_property_id,
+          room_id: redirect.matched_room_id,
+          check_in: checkIn,
+          check_out: checkOut,
+          nights,
+          total_xcd: total,
+          finders_fee_xcd: fee,
+          fee_type: partner.fee_agreement_type,
+          fee_rate: partner.fee_rate,
+          fee_status: "pending",
+        })
+        .select("id")
+        .single();
+      if (bErr) throw bErr;
+
+      const { error: eErr } = await supabase.from("earnings").insert({
+        booking_id: booking.id,
+        partner_id: partner.id,
+        amount_xcd: fee,
+        status: "pending",
+      });
+      if (eErr) throw eErr;
+
+      // Emails (fire-and-forget)
+      if (t?.email) {
+        sendEmail({
+          to: t.email,
+          subject: `Your room is confirmed — ${m?.name ?? "StayLink SVG"}`,
+          html: templates.travellerBookingConfirmed({
+            travellerName: t.full_name ?? "Traveller",
+            propertyName: m?.name ?? "",
+            address: m?.address ?? "—",
+            checkIn,
+            checkOut,
+            nights,
+            nightlyRate: formatXCD(price),
+            total: formatXCD(total),
+            contact: [m?.contact_email, m?.contact_phone].filter(Boolean).join(" · ") || "—",
+            bookingUrl: m?.website ?? null,
+          }),
+        });
+      }
+      if (partner.email) {
+        sendEmail({
+          to: partner.email,
+          subject: `New booking redirect confirmed — ${t?.full_name ?? "traveller"}, ${checkIn}`,
+          html: templates.partnerBookingConfirmed({
+            travellerName: t?.full_name ?? "Traveller",
+            checkIn,
+            checkOut,
+            nights,
+            roomName: details.data.room.name,
+            total: formatXCD(total),
+            finderFee: formatXCD(fee),
+          }),
+        });
+      }
+
+      toast.success(`Booking confirmed. ${formatXCD(fee)} fee recorded.`);
+      qc.invalidateQueries({ queryKey: ["admin", "redirects"] });
+      qc.invalidateQueries({ queryKey: ["admin", "redirect-queue"] });
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not confirm booking");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">Confirm booking</DialogTitle>
+          <DialogDescription>
+            Create the booking and record the finder's fee.
+          </DialogDescription>
+        </DialogHeader>
+
+        {details.isLoading ? (
+          <div className="py-8 flex items-center justify-center text-muted-foreground">
+            <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Loading details…
+          </div>
+        ) : (
+          <div className="space-y-3 text-sm">
+            <Row k="Traveller" v={t?.full_name ?? "—"} />
+            <Row k="Property" v={m?.name ?? "—"} />
+            <Row k="Room" v={details.data?.room?.name ?? "—"} />
+            <Row k="Check-in / out" v={`${checkIn} → ${checkOut}`} />
+            <Row k="Nights" v={String(nights)} />
+            <Row k="Nightly rate" v={formatXCD(price)} />
+            <Row k="Total" v={formatXCD(total)} bold />
+            <Row
+              k="Finder's fee"
+              v={`${formatXCD(fee)} ${partner?.fee_agreement_type === "flat" ? "(flat)" : `(${partner?.fee_rate}%)`}`}
+              bold
+            />
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={confirm} disabled={busy || details.isLoading || !details.data?.partner}>
+            {busy ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Check className="h-4 w-4 mr-1.5" />}
+            Confirm booking
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Row({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
+  return (
+    <div className="flex justify-between gap-4 py-1.5 border-b border-border/50 last:border-0">
+      <span className="text-muted-foreground">{k}</span>
+      <span className={bold ? "font-medium" : ""}>{v}</span>
+    </div>
   );
 }
