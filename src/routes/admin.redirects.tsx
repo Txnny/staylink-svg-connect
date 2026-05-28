@@ -43,6 +43,7 @@ function RedirectsPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [matching, setMatching] = useState<RedirectRow | null>(null);
+  const [confirming, setConfirming] = useState<RedirectRow | null>(null);
 
   const list = useQuery({
     queryKey: ["admin", "redirects", status, fromDate, toDate],
@@ -50,9 +51,9 @@ function RedirectsPage() {
       let q = supabase
         .from("redirects")
         .select(
-          `id, status, created_at, admin_notes,
-           traveller:travellers(id, full_name, nights_needed, guest_count, budget_max_xcd, arrival_date, departure_date, accommodation_type_preference),
-           matched:properties!redirects_matched_property_id_fkey(id, name, type),
+          `id, status, created_at, admin_notes, matched_property_id, matched_room_id,
+           traveller:travellers(id, full_name, email, nights_needed, guest_count, budget_max_xcd, arrival_date, departure_date, accommodation_type_preference),
+           matched:properties!redirects_matched_property_id_fkey(id, name, type, address, contact_email, contact_phone, website, partner_id),
            from:properties!redirects_from_property_id_fkey(name)`,
         )
         .order("created_at", { ascending: false });
