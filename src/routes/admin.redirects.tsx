@@ -169,6 +169,11 @@ function RedirectsPage() {
                           <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Match
                         </Button>
                       )}
+                      {r.status === "matched" && (
+                        <Button size="sm" variant="default" onClick={() => setConfirming(r)}>
+                          <BadgeCheck className="h-3.5 w-3.5 mr-1.5" /> Confirm
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );
