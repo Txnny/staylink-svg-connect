@@ -189,6 +189,12 @@ function RedirectsPage() {
           onClose={() => setMatching(null)}
         />
       )}
+      {confirming && (
+        <ConfirmBookingDialog
+          redirect={confirming}
+          onClose={() => setConfirming(null)}
+        />
+      )}
     </div>
   );
 }
