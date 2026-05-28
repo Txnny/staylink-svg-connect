@@ -22,7 +22,7 @@ type Partner = {
   room_count: number | null;
   fee_agreement_type: "flat" | "percentage";
   fee_rate: number;
-  status: "onboarding" | "active" | "paused" | "removed";
+  status: "onboarding" | "active" | "inactive";
   joined_at: string;
   user_id: string | null;
 };
