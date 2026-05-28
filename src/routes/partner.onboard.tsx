@@ -66,6 +66,8 @@ function PartnerOnboard() {
       contact_name: parsed.data.contact_name,
       email: parsed.data.email,
       phone: parsed.data.phone,
+      parish: parsed.data.parish,
+      room_count: parsed.data.room_count,
       fee_agreement_type: parsed.data.fee_type,
       fee_rate: parsed.data.fee_rate,
       status: "onboarding",
@@ -76,6 +78,31 @@ function PartnerOnboard() {
       toast.error(error.message || "Could not submit. Try again.");
       return;
     }
+
+    // Fire-and-forget transactional emails.
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    sendEmail({
+      to: parsed.data.email,
+      subject: "Welcome to StayLink SVG — your application is received",
+      html: templates.partnerOnboardingWelcome({
+        businessName: parsed.data.business_name,
+        contactName: parsed.data.contact_name,
+      }),
+    });
+    sendEmail({
+      to: import.meta.env.VITE_ADMIN_NOTIFICATION_EMAIL || "admin@staylinksvg.com",
+      subject: `New partner application — ${parsed.data.business_name}`,
+      html: templates.adminNewPartnerNotice({
+        businessName: parsed.data.business_name,
+        contactName: parsed.data.contact_name,
+        propertyType: parsed.data.property_type,
+        parish: parsed.data.parish,
+        email: parsed.data.email,
+        phone: parsed.data.phone,
+        adminUrl: `${origin}/admin/partners`,
+      }),
+    });
+
     setSubmitted(true);
   }
 
