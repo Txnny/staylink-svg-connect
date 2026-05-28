@@ -1,7 +1,10 @@
 // Supabase Edge Function: send-email
-// Single transactional email sender for StayLink SVG. Wraps the Resend HTTP API.
+// Admin-only transactional email sender. Wraps the Resend HTTP API.
+// Requires a valid admin JWT — public callers cannot use this endpoint to
+// send arbitrary HTML.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,40 +21,45 @@ interface SendEmailInput {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // Require admin JWT
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return json({ error: "Missing Authorization header" }, 401);
+    }
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
+    const { data: isAdmin, error: roleErr } = await userClient.rpc("has_role", {
+      _user_id: userData.user.id,
+      _role: "admin",
+    });
+    if (roleErr || !isAdmin) return json({ error: "Admin role required" }, 403);
+
     const apiKey = Deno.env.get("RESEND_API_KEY");
     const from = Deno.env.get("STAYLINK_FROM_EMAIL") ?? "StayLink SVG <onboarding@resend.dev>";
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: "RESEND_API_KEY not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
+    if (!apiKey) return json({ error: "RESEND_API_KEY not configured" }, 500);
 
     const body = (await req.json()) as SendEmailInput;
     if (!body?.to || !body?.subject || !body?.html) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: to, subject, html" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({ error: "Missing required fields: to, subject, html" }, 400);
     }
 
     let recipients: string[];
     if (body.to === "admin") {
       const adminEmail = Deno.env.get("ADMIN_NOTIFICATION_EMAIL");
-      if (!adminEmail) {
-        return new Response(
-          JSON.stringify({ error: "ADMIN_NOTIFICATION_EMAIL not configured" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
+      if (!adminEmail) return json({ error: "ADMIN_NOTIFICATION_EMAIL not configured" }, 500);
       recipients = [adminEmail];
     } else {
       recipients = Array.isArray(body.to) ? body.to : [body.to];
@@ -59,10 +67,7 @@ Deno.serve(async (req) => {
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from,
         to: recipients,
@@ -71,26 +76,22 @@ Deno.serve(async (req) => {
         reply_to: body.reply_to,
       }),
     });
-
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       console.error("Resend error", res.status, data);
-      return new Response(
-        JSON.stringify({ error: "Resend send failed", status: res.status, details: data }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({ error: "Resend send failed", status: res.status, details: data }, 502);
     }
-
-    return new Response(
-      JSON.stringify({ ok: true, id: data.id ?? null }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return json({ ok: true, id: data.id ?? null });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("send-email error:", message);
-    return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return json({ error: message }, 500);
   }
 });
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}

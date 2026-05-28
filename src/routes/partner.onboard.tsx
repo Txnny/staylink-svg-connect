@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Waves, CheckCircle2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { PARISHES, sendEmail, templates } from "@/lib/emails";
+import { PARISHES } from "@/lib/emails";
 
 export const Route = createFileRoute("/partner/onboard")({
   head: () => ({
@@ -61,47 +61,34 @@ function PartnerOnboard() {
       `Rooms: ${parsed.data.room_count}` +
       (parsed.data.heard_about ? `; Heard via: ${parsed.data.heard_about}` : "");
 
-    const { error } = await supabase.from("partners").insert({
-      business_name: parsed.data.business_name,
-      contact_name: parsed.data.contact_name,
-      email: parsed.data.email,
-      phone: parsed.data.phone,
-      parish: parsed.data.parish,
-      room_count: parsed.data.room_count,
-      fee_agreement_type: parsed.data.fee_type,
-      fee_rate: parsed.data.fee_rate,
-      status: "onboarding",
-      bank_details: notes,
-    });
+    const { data: inserted, error } = await supabase
+      .from("partners")
+      .insert({
+        business_name: parsed.data.business_name,
+        contact_name: parsed.data.contact_name,
+        email: parsed.data.email,
+        phone: parsed.data.phone,
+        parish: parsed.data.parish,
+        room_count: parsed.data.room_count,
+        fee_agreement_type: parsed.data.fee_type,
+        fee_rate: parsed.data.fee_rate,
+        status: "onboarding",
+        bank_details: notes,
+      })
+      .select("id")
+      .single();
     setSubmitting(false);
     if (error) {
       toast.error(error.message || "Could not submit. Try again.");
       return;
     }
 
-    // Fire-and-forget transactional emails.
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    sendEmail({
-      to: parsed.data.email,
-      subject: "Welcome to StayLink SVG — your application is received",
-      html: templates.partnerOnboardingWelcome({
-        businessName: parsed.data.business_name,
-        contactName: parsed.data.contact_name,
-      }),
-    });
-    sendEmail({
-      to: "admin",
-      subject: `New partner application — ${parsed.data.business_name}`,
-      html: templates.adminNewPartnerNotice({
-        businessName: parsed.data.business_name,
-        contactName: parsed.data.contact_name,
-        propertyType: parsed.data.property_type,
-        parish: parsed.data.parish,
-        email: parsed.data.email,
-        phone: parsed.data.phone,
-        adminUrl: `${origin}/admin/partners`,
-      }),
-    });
+    // Server-side notification: fixed templates, no user-controlled HTML.
+    if (inserted?.id) {
+      supabase.functions
+        .invoke("notify-onboarding", { body: { partner_id: inserted.id } })
+        .catch((e) => console.error("notify-onboarding failed", e));
+    }
 
     setSubmitted(true);
   }
