@@ -6,8 +6,9 @@ import { formatXCD, formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Sparkles, Loader2, Check } from "lucide-react";
+import { Sparkles, Loader2, Check, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
+import { sendEmail, templates } from "@/lib/emails";
 
 export const Route = createFileRoute("/admin/redirects")({
   component: RedirectsPage,
