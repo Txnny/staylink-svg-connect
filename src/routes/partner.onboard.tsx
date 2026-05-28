@@ -90,7 +90,7 @@ function PartnerOnboard() {
       }),
     });
     sendEmail({
-      to: import.meta.env.VITE_ADMIN_NOTIFICATION_EMAIL || "admin@staylinksvg.com",
+      to: "admin",
       subject: `New partner application — ${parsed.data.business_name}`,
       html: templates.adminNewPartnerNotice({
         businessName: parsed.data.business_name,
