@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 interface SendEmailInput {
-  to: string | string[];
+  to: string | string[] | "admin";
   subject: string;
   html: string;
   reply_to?: string;
