@@ -21,9 +21,12 @@ type RedirectRow = {
   status: string;
   created_at: string;
   admin_notes: string | null;
+  matched_property_id: string | null;
+  matched_room_id: string | null;
   traveller: {
     id?: string;
     full_name?: string;
+    email?: string;
     nights_needed?: number;
     guest_count?: number;
     budget_max_xcd?: number | null;
@@ -31,7 +34,7 @@ type RedirectRow = {
     departure_date?: string | null;
     accommodation_type_preference?: string | null;
   } | null;
-  matched: { id?: string; name?: string; type?: string } | null;
+  matched: { id?: string; name?: string; type?: string; address?: string | null; contact_email?: string | null; contact_phone?: string | null; website?: string | null; partner_id?: string | null } | null;
   from: { name?: string } | null;
 };
 
