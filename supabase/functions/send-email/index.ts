@@ -43,7 +43,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    const recipients = Array.isArray(body.to) ? body.to : [body.to];
+    let recipients: string[];
+    if (body.to === "admin") {
+      const adminEmail = Deno.env.get("ADMIN_NOTIFICATION_EMAIL");
+      if (!adminEmail) {
+        return new Response(
+          JSON.stringify({ error: "ADMIN_NOTIFICATION_EMAIL not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      recipients = [adminEmail];
+    } else {
+      recipients = Array.isArray(body.to) ? body.to : [body.to];
+    }
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
