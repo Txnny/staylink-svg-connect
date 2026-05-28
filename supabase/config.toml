@@ -1,10 +1,13 @@
 project_id = "tasdwidgchddlxxcwqks"
 
 [functions.match-rooms]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.approve-partner]
 verify_jwt = true
+
+[functions.notify-onboarding]
+verify_jwt = false
