@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatXCD, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText } from "lucide-react";
+import { FileText, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/earnings")({
@@ -49,6 +49,7 @@ type GroupKey = string; // "YYYY-MM::partner_id"
 function EarningsPage() {
   const qc = useQueryClient();
   const [generating, setGenerating] = useState<GroupKey | null>(null);
+  const [markingPaid, setMarkingPaid] = useState<string | null>(null); // earnings row id
 
   const earnings = useQuery({
     queryKey: ["admin-earnings"],
@@ -114,6 +115,52 @@ function EarningsPage() {
     }
   }
 
+  async function markGroupPaid(key: GroupKey) {
+    const rows = groups[key];
+    if (!rows?.length) return;
+    const ids = rows.filter((r) => r.status !== "paid").map((r) => r.id);
+    if (!ids.length) { toast("All rows already marked paid"); return; }
+
+    const today = new Date().toISOString().split("T")[0];
+    const { error: eErr } = await supabase
+      .from("earnings")
+      .update({ status: "paid", paid_date: today })
+      .in("id", ids);
+    if (eErr) { toast.error(eErr.message); return; }
+
+    // Also mark associated bookings fee_status = paid
+    const bookingIds = rows
+      .filter((r) => r.booking?.id && ids.includes(r.id))
+      .map((r) => r.booking!.id);
+    if (bookingIds.length) {
+      await supabase.from("bookings").update({ fee_status: "paid" }).in("id", bookingIds);
+    }
+
+    toast.success(`${ids.length} earning${ids.length === 1 ? "" : "s"} marked as paid`);
+    qc.invalidateQueries({ queryKey: ["admin-earnings"] });
+  }
+
+  async function markRowPaid(row: EarningRow) {
+    if (row.status === "paid") return;
+    setMarkingPaid(row.id);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const { error } = await supabase
+        .from("earnings")
+        .update({ status: "paid", paid_date: today })
+        .eq("id", row.id);
+      if (error) { toast.error(error.message); return; }
+
+      if (row.booking?.id) {
+        await supabase.from("bookings").update({ fee_status: "paid" }).eq("id", row.booking.id);
+      }
+      toast.success("Marked as paid");
+      qc.invalidateQueries({ queryKey: ["admin-earnings"] });
+    } finally {
+      setMarkingPaid(null);
+    }
+  }
+
   if (earnings.isLoading) {
     return (
       <div className="px-6 lg:px-10 py-10 max-w-7xl mx-auto text-muted-foreground">Loading…</div>
@@ -148,6 +195,8 @@ function EarningsPage() {
         });
         const total = rows.reduce((s, r) => s + Number(r.amount_xcd), 0);
         const allInvoiced = rows.every((r) => r.status === "invoiced" || r.status === "paid");
+        const allPaid = rows.every((r) => r.status === "paid");
+        const hasInvoiced = rows.some((r) => r.status === "invoiced");
 
         return (
           <section key={key} className="rounded-2xl border bg-card">
@@ -164,11 +213,27 @@ function EarningsPage() {
                     : `${partner.fee_rate}% per booking`}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap justify-end">
                 <div className="text-right">
                   <div className="text-xs text-muted-foreground uppercase tracking-wider">Total fees</div>
                   <div className="font-display text-xl">{formatXCD(total)}</div>
                 </div>
+                {hasInvoiced && !allPaid && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-mint/50 text-primary hover:bg-mint/10"
+                    onClick={() => markGroupPaid(key)}
+                  >
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    Mark all paid
+                  </Button>
+                )}
+                {allPaid && (
+                  <Badge variant="outline" className="bg-mint/20 text-primary border-mint/40 px-3 py-1.5">
+                    <CheckCircle className="h-3 w-3 mr-1.5" /> Paid
+                  </Badge>
+                )}
                 <Button
                   size="sm"
                   variant={allInvoiced ? "outline" : "default"}
@@ -198,13 +263,15 @@ function EarningsPage() {
                     <th className="px-5 py-3 font-medium">Fee rate</th>
                     <th className="px-5 py-3 font-medium">Finder's fee</th>
                     <th className="px-5 py-3 font-medium">Status</th>
+                    <th className="px-5 py-3 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {rows.map((r) => {
                     const b = r.booking;
+                    const isPaid = r.status === "paid";
                     return (
-                      <tr key={r.id}>
+                      <tr key={r.id} className={isPaid ? "opacity-60" : ""}>
                         <td className="px-5 py-3.5 text-muted-foreground text-xs">
                           {formatDate(b?.check_in)}
                         </td>
@@ -228,9 +295,26 @@ function EarningsPage() {
                         </td>
                         <td className="px-5 py-3.5 font-medium">{formatXCD(r.amount_xcd)}</td>
                         <td className="px-5 py-3.5">
-                          <Badge variant="outline" className="capitalize text-xs">
+                          <Badge
+                            variant="outline"
+                            className={`capitalize text-xs ${isPaid ? "bg-mint/20 text-primary border-mint/40" : ""}`}
+                          >
                             {r.status}
                           </Badge>
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          {!isPaid && r.status === "invoiced" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs gap-1 text-primary hover:text-primary hover:bg-mint/10"
+                              disabled={markingPaid === r.id}
+                              onClick={() => markRowPaid(r)}
+                            >
+                              <CheckCircle className="h-3 w-3" />
+                              {markingPaid === r.id ? "…" : "Paid"}
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );
