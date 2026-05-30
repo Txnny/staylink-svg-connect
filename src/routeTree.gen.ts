@@ -22,6 +22,7 @@ import { Route as AdminRedirectsRouteImport } from './routes/admin.redirects'
 import { Route as AdminPropertiesRouteImport } from './routes/admin.properties'
 import { Route as AdminPartnersRouteImport } from './routes/admin.partners'
 import { Route as AdminEarningsRouteImport } from './routes/admin.earnings'
+import { Route as AdminCometRouteImport } from './routes/admin.comet'
 
 const RequestRoute = RequestRouteImport.update({
   id: '/request',
@@ -88,12 +89,18 @@ const AdminEarningsRoute = AdminEarningsRouteImport.update({
   path: '/earnings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCometRoute = AdminCometRouteImport.update({
+  id: '/comet',
+  path: '/comet',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/partner': typeof PartnerRouteWithChildren
   '/request': typeof RequestRoute
+  '/admin/comet': typeof AdminCometRoute
   '/admin/earnings': typeof AdminEarningsRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/properties': typeof AdminPropertiesRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/request': typeof RequestRoute
+  '/admin/comet': typeof AdminCometRoute
   '/admin/earnings': typeof AdminEarningsRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/properties': typeof AdminPropertiesRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/partner': typeof PartnerRouteWithChildren
   '/request': typeof RequestRoute
+  '/admin/comet': typeof AdminCometRoute
   '/admin/earnings': typeof AdminEarningsRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/properties': typeof AdminPropertiesRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/partner'
     | '/request'
+    | '/admin/comet'
     | '/admin/earnings'
     | '/admin/partners'
     | '/admin/properties'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/request'
+    | '/admin/comet'
     | '/admin/earnings'
     | '/admin/partners'
     | '/admin/properties'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/partner'
     | '/request'
+    | '/admin/comet'
     | '/admin/earnings'
     | '/admin/partners'
     | '/admin/properties'
@@ -279,10 +291,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminEarningsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/comet': {
+      id: '/admin/comet'
+      path: '/comet'
+      fullPath: '/admin/comet'
+      preLoaderRoute: typeof AdminCometRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminCometRoute: typeof AdminCometRoute
   AdminEarningsRoute: typeof AdminEarningsRoute
   AdminPartnersRoute: typeof AdminPartnersRoute
   AdminPropertiesRoute: typeof AdminPropertiesRoute
@@ -292,6 +312,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCometRoute: AdminCometRoute,
   AdminEarningsRoute: AdminEarningsRoute,
   AdminPartnersRoute: AdminPartnersRoute,
   AdminPropertiesRoute: AdminPropertiesRoute,
@@ -326,3 +347,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -7,6 +7,7 @@ import {
   Receipt,
   Settings,
   Waves,
+  Satellite,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ const nav: NavItem[] = [
   { to: "/admin/redirects", label: "Redirects", icon: ArrowRightLeft },
   { to: "/admin/partners", label: "Partners", icon: Users },
   { to: "/admin/earnings", label: "Earnings", icon: Receipt },
+  { to: "/admin/comet", label: "Comet", icon: Satellite },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

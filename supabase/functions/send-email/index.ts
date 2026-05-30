@@ -1,7 +1,6 @@
 // Supabase Edge Function: send-email
-// Admin-only transactional email sender. Wraps the Resend HTTP API.
-// Requires a valid admin JWT — public callers cannot use this endpoint to
-// send arbitrary HTML.
+// Transactional email sender. Wraps the Resend HTTP API.
+// Requires a valid admin JWT OR the service role key (for internal function-to-function calls).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -29,23 +28,33 @@ Deno.serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Require admin JWT
     const authHeader = req.headers.get("Authorization") ?? "";
     if (!authHeader.startsWith("Bearer ")) {
       return json({ error: "Missing Authorization header" }, 401);
     }
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
-    const { data: isAdmin, error: roleErr } = await userClient.rpc("has_role", {
-      _user_id: userData.user.id,
-      _role: "admin",
-    });
-    if (roleErr || !isAdmin) return json({ error: "Admin role required" }, 403);
+
+    const token = authHeader.slice(7);
+
+    // Allow internal service-role calls (e.g. from approve-partner) to bypass the
+    // has_role check — the service role key is only known to edge functions.
+    const isServiceRole = token === SERVICE_ROLE_KEY;
+
+    if (!isServiceRole) {
+      // Require admin JWT for external callers
+      const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false },
+      });
+      const { data: userData, error: userErr } = await userClient.auth.getUser();
+      if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
+      const { data: isAdmin, error: roleErr } = await userClient.rpc("has_role", {
+        _user_id: userData.user.id,
+        _role: "admin",
+      });
+      if (roleErr || !isAdmin) return json({ error: "Admin role required" }, 403);
+    }
 
     const apiKey = Deno.env.get("RESEND_API_KEY");
     const from = Deno.env.get("STAYLINK_FROM_EMAIL") ?? "StayLink SVG <onboarding@resend.dev>";
