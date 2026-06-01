@@ -114,7 +114,13 @@ function PartnersPage() {
               {list.data?.map((p) => (
                 <tr key={p.id} className="hover:bg-muted/30">
                   <td className="px-5 py-3.5">
-                    <div className="font-medium">{p.business_name}</div>
+                    <Link
+                      to="/admin/partners/$id"
+                      params={{ id: p.id }}
+                      className="font-medium hover:text-primary hover:underline"
+                    >
+                      {p.business_name}
+                    </Link>
                     <div className="text-xs text-muted-foreground">{p.contact_name}</div>
                   </td>
                   <td className="px-5 py-3.5">
