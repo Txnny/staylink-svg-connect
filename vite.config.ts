@@ -6,6 +6,10 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Vercel sets VERCEL=1 at build time; NITRO_PRESET=vercel for explicit local/CI builds.
+const useVercelNitro =
+  process.env.NITRO_PRESET === "vercel" || process.env.VERCEL === "1";
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
@@ -14,7 +18,5 @@ export default defineConfig({
   },
   // Top-level `nitro` enables the deploy bundle (see @lovable.dev/vite-tanstack-config).
   // Without it outside Lovable sandbox, build only emits dist/client + dist/server → Vercel 404.
-  ...(process.env.NITRO_PRESET === "vercel"
-    ? { nitro: { preset: "vercel" } }
-    : {}),
+  ...(useVercelNitro ? { nitro: { preset: "vercel" } } : {}),
 });
