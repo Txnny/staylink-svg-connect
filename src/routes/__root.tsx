@@ -110,6 +110,20 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    const onRejection = (e: PromiseRejectionEvent) => {
+      if (recoverIfStaleAuthError(e.reason)) e.preventDefault();
+    };
+    const onError = (e: ErrorEvent) => {
+      if (recoverIfStaleAuthError(e.error ?? e.message)) e.preventDefault();
+    };
+    window.addEventListener("unhandledrejection", onRejection);
+    window.addEventListener("error", onError);
+    return () => {
+      window.removeEventListener("unhandledrejection", onRejection);
+      window.removeEventListener("error", onError);
+    };
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
