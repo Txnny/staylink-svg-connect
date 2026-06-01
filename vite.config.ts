@@ -18,5 +18,16 @@ export default defineConfig({
   },
   // Top-level `nitro` enables the deploy bundle (see @lovable.dev/vite-tanstack-config).
   // Without it outside Lovable sandbox, build only emits dist/client + dist/server → Vercel 404.
-  ...(useVercelNitro ? { nitro: { preset: "vercel" } } : {}),
+  ...(useVercelNitro
+    ? {
+        nitro: {
+          preset: "vercel",
+          output: {
+            dir: ".vercel/output",
+            serverDir: ".vercel/output/functions/__server.func",
+            publicDir: ".vercel/output/static",
+          },
+        },
+      }
+    : {}),
 });
