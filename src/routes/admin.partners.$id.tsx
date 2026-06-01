@@ -1,10 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatXCD } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Mail, Phone, MapPin, Building2, BedDouble, Coins } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Mail, Phone, MapPin, Building2, BedDouble, Coins, Pencil, X } from "lucide-react";
 
 export const Route = createFileRoute("/admin/partners/$id")({
   component: PartnerProfilePage,
@@ -28,6 +40,8 @@ type Partner = {
 
 function PartnerProfilePage() {
   const { id } = Route.useParams();
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
 
   const partner = useQuery({
     queryKey: ["admin", "partner", id],
@@ -112,7 +126,14 @@ function PartnerProfilePage() {
             {p.contact_name} · Joined {formatDate(p.joined_at)}
           </p>
         </div>
-        <Badge variant="outline" className="capitalize">{p.status}</Badge>
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="capitalize">{p.status}</Badge>
+          {!editing && (
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+            </Button>
+          )}
+        </div>
       </header>
 
       <section className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -122,26 +143,38 @@ function PartnerProfilePage() {
         <Stat icon={Coins} label="Pending earnings" value={formatXCD(pending)} />
       </section>
 
-      <section className="rounded-2xl border bg-card">
-        <div className="px-5 py-4 border-b">
-          <h2 className="font-display text-xl">Contact & agreement</h2>
-        </div>
-        <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 px-5 py-5 text-sm">
-          <Field icon={Mail} label="Email" value={p.email} />
-          <Field icon={Phone} label="Phone" value={p.phone ?? "—"} />
-          <Field icon={MapPin} label="Parish" value={p.parish ?? "—"} />
-          <Field label="Fee agreement" value={
-            p.fee_agreement_type === "flat"
-              ? `Flat ${formatXCD(p.fee_rate)} per booking`
-              : `${p.fee_rate}% per booking`
-          } />
-          <Field label="Stated room count" value={p.room_count?.toString() ?? "—"} />
-          <Field label="Auth user" value={p.user_id ?? "Not linked"} />
-          <div className="md:col-span-2">
-            <Field label="Bank details" value={p.bank_details ?? "—"} multiline />
+      {editing ? (
+        <EditPartnerForm
+          partner={p}
+          onCancel={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            qc.invalidateQueries({ queryKey: ["admin", "partner", id] });
+            qc.invalidateQueries({ queryKey: ["admin", "partners"] });
+          }}
+        />
+      ) : (
+        <section className="rounded-2xl border bg-card">
+          <div className="px-5 py-4 border-b">
+            <h2 className="font-display text-xl">Contact & agreement</h2>
           </div>
-        </dl>
-      </section>
+          <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 px-5 py-5 text-sm">
+            <Field icon={Mail} label="Email" value={p.email} />
+            <Field icon={Phone} label="Phone" value={p.phone ?? "—"} />
+            <Field icon={MapPin} label="Parish" value={p.parish ?? "—"} />
+            <Field label="Fee agreement" value={
+              p.fee_agreement_type === "flat"
+                ? `Flat ${formatXCD(p.fee_rate)} per booking`
+                : `${p.fee_rate}% per booking`
+            } />
+            <Field label="Stated room count" value={p.room_count?.toString() ?? "—"} />
+            <Field label="Auth user" value={p.user_id ?? "Not linked"} />
+            <div className="md:col-span-2">
+              <Field label="Bank details" value={p.bank_details ?? "—"} multiline />
+            </div>
+          </dl>
+        </section>
+      )}
 
       <section className="rounded-2xl border bg-card">
         <div className="px-5 py-4 border-b">
@@ -212,6 +245,193 @@ function PartnerProfilePage() {
   );
 }
 
+function EditPartnerForm({
+  partner,
+  onCancel,
+  onSaved,
+}: {
+  partner: Partner;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    business_name: partner.business_name,
+    contact_name: partner.contact_name,
+    email: partner.email,
+    phone: partner.phone ?? "",
+    parish: partner.parish ?? "",
+    room_count: partner.room_count?.toString() ?? "",
+    fee_agreement_type: partner.fee_agreement_type,
+    fee_rate: partner.fee_rate.toString(),
+    bank_details: partner.bank_details ?? "",
+    status: partner.status,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setForm({
+      business_name: partner.business_name,
+      contact_name: partner.contact_name,
+      email: partner.email,
+      phone: partner.phone ?? "",
+      parish: partner.parish ?? "",
+      room_count: partner.room_count?.toString() ?? "",
+      fee_agreement_type: partner.fee_agreement_type,
+      fee_rate: partner.fee_rate.toString(),
+      bank_details: partner.bank_details ?? "",
+      status: partner.status,
+    });
+  }, [partner]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    const { error } = await supabase
+      .from("partners")
+      .update({
+        business_name: form.business_name.trim(),
+        contact_name: form.contact_name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || null,
+        parish: form.parish.trim() || null,
+        room_count: form.room_count ? Number(form.room_count) : null,
+        fee_agreement_type: form.fee_agreement_type,
+        fee_rate: Number(form.fee_rate) || 0,
+        bank_details: form.bank_details.trim() || null,
+        status: form.status,
+      })
+      .eq("id", partner.id);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Partner updated");
+    onSaved();
+  };
+
+  return (
+    <form onSubmit={submit} className="rounded-2xl border bg-card">
+      <div className="px-5 py-4 border-b flex items-center justify-between">
+        <h2 className="font-display text-xl">Edit partner</h2>
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          <X className="h-4 w-4 mr-1" /> Cancel
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 px-5 py-5">
+        <div className="md:col-span-2">
+          <Label>Business name</Label>
+          <Input
+            value={form.business_name}
+            onChange={(e) => setForm({ ...form, business_name: e.target.value })}
+            required
+            maxLength={200}
+          />
+        </div>
+        <div>
+          <Label>Contact name</Label>
+          <Input
+            value={form.contact_name}
+            onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
+            required
+            maxLength={120}
+          />
+        </div>
+        <div>
+          <Label>Email</Label>
+          <Input
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+            maxLength={255}
+          />
+        </div>
+        <div>
+          <Label>Phone</Label>
+          <Input
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            maxLength={40}
+          />
+        </div>
+        <div>
+          <Label>Parish</Label>
+          <Input
+            value={form.parish}
+            onChange={(e) => setForm({ ...form, parish: e.target.value })}
+            maxLength={80}
+          />
+        </div>
+        <div>
+          <Label>Number of rooms</Label>
+          <Input
+            type="number"
+            min={0}
+            value={form.room_count}
+            onChange={(e) => setForm({ ...form, room_count: e.target.value })}
+          />
+        </div>
+        <div>
+          <Label>Onboarding status</Label>
+          <Select
+            value={form.status}
+            onValueChange={(v) => setForm({ ...form, status: v as Partner["status"] })}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="onboarding">Onboarding</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Fee type</Label>
+          <Select
+            value={form.fee_agreement_type}
+            onValueChange={(v) => setForm({ ...form, fee_agreement_type: v as Partner["fee_agreement_type"] })}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="percentage">Percentage of booking</SelectItem>
+              <SelectItem value="flat">Flat EC$ per booking</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Fee amount ({form.fee_agreement_type === "flat" ? "EC$" : "%"})</Label>
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={form.fee_rate}
+            onChange={(e) => setForm({ ...form, fee_rate: e.target.value })}
+            required
+          />
+        </div>
+        <div className="md:col-span-2">
+          <Label>Bank details</Label>
+          <Textarea
+            rows={4}
+            value={form.bank_details}
+            onChange={(e) => setForm({ ...form, bank_details: e.target.value })}
+            placeholder="Bank name, account number, branch, SWIFT…"
+          />
+        </div>
+      </div>
+      <div className="px-5 py-4 border-t flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Saving…" : "Save changes"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function Stat({
   icon: Icon,
   label,
@@ -254,6 +474,3 @@ function Field({
     </div>
   );
 }
-
-// silence unused Button import warning for future actions
-void Button;
