@@ -32,6 +32,10 @@ function PartnerLogin() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setSubmitting(false);
     if (error) {
+      if (recoverIfStaleAuthError(error)) {
+        toast.message("Refreshing session…");
+        return;
+      }
       toast.error(error.message);
       return;
     }
