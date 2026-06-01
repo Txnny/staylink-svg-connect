@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Waves } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { recoverIfStaleAuthError } from "@/lib/auth-recovery";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/partner/login")({
@@ -31,6 +32,10 @@ function PartnerLogin() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setSubmitting(false);
     if (error) {
+      if (recoverIfStaleAuthError(error)) {
+        toast.message("Refreshing session…");
+        return;
+      }
       toast.error(error.message);
       return;
     }
