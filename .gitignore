@@ -16,6 +16,7 @@ dist-ssr
 .nitro
 .vercel/output
 *.local
+.env.vercel*.check
 
 # Wrangler / Cloudflare
 .wrangler/
@@ -31,3 +32,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.vercel
